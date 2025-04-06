@@ -1,4 +1,4 @@
-import { Controller, Body, Post, Get, Query, Inject, UnauthorizedException } from '@nestjs/common'
+import { Controller, Body, Post, Get, Query, Inject, UnauthorizedException, ParseIntPipe, DefaultValuePipe } from '@nestjs/common'
 import { UserService } from './user.service'
 import { RegisterUserDto } from './dto/register.dto'
 import { RedisService } from 'src/redis/redis.service';
@@ -172,5 +172,22 @@ export class UserController {
       html: `<p>你的验证码是 ${code}</p>`
     });
     return '发送成功';
+  }
+
+  @Get('freeze')
+  async freeze(@Query('id') userId: number) {
+    await this.userService.freezeUserById(userId);
+    return 'success';
+  }
+
+  @Get('list')
+  async list(
+    @Query('pageNo', new DefaultValuePipe(1), ParseIntPipe) pageNo: number,
+    @Query('pageSize', new DefaultValuePipe(2), ParseIntPipe) pageSize: number,
+    @Query('username') username: string,
+    @Query('nickName') nickName: string,
+    @Query('email') email: string
+  ) {
+    return await this.userService.findUsersByPage(username, nickName, email, pageNo, pageSize);
   }
 }
