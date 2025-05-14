@@ -1,4 +1,4 @@
-import { Controller, Body, Post, Get, Query, Inject, UnauthorizedException, ParseIntPipe, DefaultValuePipe } from '@nestjs/common'
+import { Controller, Body, Post, Get, Query, Inject, UnauthorizedException, ParseIntPipe, DefaultValuePipe, BadRequestException, UseInterceptors, UploadedFile } from '@nestjs/common'
 import { UserService } from './user.service'
 import { RegisterUserDto } from './dto/register.dto'
 import { RedisService } from 'src/redis/redis.service';
@@ -10,6 +10,9 @@ import { RequireLogin, UserInfo } from 'src/custom.decorator';
 import { UserDetailVo } from './vo/user-info.vo';
 import { UpdatePasswordDto } from './dto/update-user-password.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import * as path from 'path';
+import { storage } from 'src/my-file-storage';
 
 @Controller('user')
 export class UserController {
@@ -31,6 +34,7 @@ export class UserController {
     const accessToken = this.jwtService.sign({
       userId: user.id,
       username: user.username,
+      email: user.email,
       roles: user.roles,
       permissions: user.permissions
     }, {
@@ -94,7 +98,6 @@ export class UserController {
   async refresh(@Query('refreshToken') refreshToken: string) {
     try {
       const data = this.jwtService.verify(refreshToken);
-
       const user = await this.userService.findUserById(data.userId, false);
 
       return this.generateTokens(user);
@@ -135,9 +138,8 @@ export class UserController {
   }
 
   @Post(['update_password', 'admin/update_password'])
-  @RequireLogin()
-  async updatePassword(@UserInfo('userId') userId: number, @Body() passwordDto: UpdatePasswordDto) {
-    return await this.userService.updatePassword(userId, passwordDto);
+  async updatePassword(@Body() passwordDto: UpdatePasswordDto) {
+    return await this.userService.updatePassword(passwordDto);
   }
 
   @Get('update_password/captcha')
@@ -161,13 +163,14 @@ export class UserController {
   }
 
   @Get('update/captcha')
-  async updateCaptcha(@Query('address') address: string) {
+  @RequireLogin()
+  async updateCaptcha(@Query('email') email: string) {
     const code = Math.random().toString().slice(2, 8);
 
-    await this.redisService.set(`update_user_captcha_${address}`, code, 10 * 60);
+    await this.redisService.set(`update_user_captcha_${email}`, code, 10 * 60);
 
     await this.emailService.sendMail({
-      to: address,
+      to: email,
       subject: '更改用户信息验证码',
       html: `<p>你的验证码是 ${code}</p>`
     });
@@ -189,5 +192,26 @@ export class UserController {
     @Query('email') email: string
   ) {
     return await this.userService.findUsersByPage(username, nickName, email, pageNo, pageSize);
+  }
+
+  @Post('upload-avatar')
+  @UseInterceptors(FileInterceptor('file', {
+    storage: storage,
+    limits: {
+      fileSize: 1024 * 1024 * 3, // 3m
+    },
+    fileFilter(req, file, callback) {
+      const ext = path.extname(file.originalname);
+      if (['.png', '.jpg', '.gif'].includes(ext)) {
+        callback(null, true);
+      } else {
+        callback(new BadRequestException('只能上传图片'), false)
+      }
+    },
+  }))
+  uploadFile(@UploadedFile() file: Express.Multer.File) {
+    console.log(file);
+
+    return file.path
   }
 }
