@@ -9,6 +9,7 @@ import {
     UpdateDateColumn,
 } from 'typeorm';
 import { Role } from './role.entity';
+import { dateTransformer } from 'src/utils/timeTransfer';
 
 @Entity({
     name: 'users',
@@ -70,7 +71,9 @@ export class User {
     })
     isAdmin: boolean;
 
-    @CreateDateColumn()
+    @CreateDateColumn({
+        transformer: dateTransformer,
+    })
     createTime: Date;
 
     @UpdateDateColumn()

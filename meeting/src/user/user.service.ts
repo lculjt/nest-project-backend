@@ -87,7 +87,7 @@ export class UserService {
             email: user.email,
             phoneNumber: user.phoneNumber,
             headPic: user.headPic,
-            createTime: user.createTime.getTime(),
+            createTime: new Date(user.createTime).getTime(),
             isFrozen: user.isFrozen,
             isAdmin: user.isAdmin,
             roles: user.roles.map(item => item.name),

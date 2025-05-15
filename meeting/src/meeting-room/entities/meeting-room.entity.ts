@@ -1,3 +1,4 @@
+import { dateTransformer } from "src/utils/timeTransfer";
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity()
@@ -45,12 +46,14 @@ export class MeetingRoom {
     isBooked: boolean;
 
     @CreateDateColumn({
-        comment: '创建时间'
+        comment: '创建时间',
+        transformer: dateTransformer,
     })
     createTime: Date;
 
     @UpdateDateColumn({
-        comment: '更新时间'
+        comment: '更新时间',
+        transformer: dateTransformer,
     })
     updateTime: Date;
 }
